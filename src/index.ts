@@ -1,7 +1,9 @@
 import process from 'node:process';
 import dotenv from 'dotenv';
 import WebSocket from 'ws';
-import { parseRequest } from './utils';
+
+import './config/dependencies';
+import route from './route';
 
 dotenv.config();
 
@@ -23,10 +25,16 @@ server.on('connection', (ws: WebSocket) => {
 
   ws.on('message', (message: string) => {
     try {
-      const data = parseRequest(message);
+      console.log(message.toString());
+      const result = route.wsHandler(message);
 
-      console.log('Received message from client: ', data);
-      ws.send('Server received: ' + JSON.stringify(data));
+      if (result instanceof Array) {
+        for (const item of result) {
+          ws.send(JSON.stringify(item));
+        }
+      } else {
+        ws.send(JSON.stringify(result));
+      }
     } catch (e) {
       console.error('Message error: ', e);
       ws.send('Server error: ' + e);
