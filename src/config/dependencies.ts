@@ -1,7 +1,7 @@
 import { Container } from '../framework/container';
 import { UserRepository } from '../repositories/user-repository';
 import { UserService } from '../services/user-service';
-import {AuthController} from "../controllers/auth-controller";
+import { AuthController } from '../controllers/auth-controller';
 
 const container: Container = Container.getInstance();
 
