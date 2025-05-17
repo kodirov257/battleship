@@ -1,6 +1,7 @@
 import process from 'node:process';
 import dotenv from 'dotenv';
 import WebSocket from 'ws';
+import { parseRequest } from './utils';
 
 dotenv.config();
 
@@ -21,8 +22,15 @@ server.on('connection', (ws: WebSocket) => {
   console.log('New WebSocket client connected');
 
   ws.on('message', (message: string) => {
-    console.log('Received message from client: ', message);
-    ws.send('Server received: ' + message);
+    try {
+      const data = parseRequest(message);
+
+      console.log('Received message from client: ', data);
+      ws.send('Server received: ' + JSON.stringify(data));
+    } catch (e) {
+      console.error('Message error: ', e);
+      ws.send('Server error: ' + e);
+    }
   });
 
   ws.on('close', () => {
