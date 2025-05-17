@@ -28,12 +28,16 @@ server.on('connection', (ws: WebSocket) => {
       console.log(message.toString());
       const result = route.wsHandler(message);
 
-      if (result instanceof Array) {
-        for (const item of result) {
-          ws.send(JSON.stringify(item));
-        }
-      } else {
-        ws.send(JSON.stringify(result));
+      ws.send(JSON.stringify(result.result));
+
+      if (result.broadcast.length > 0) {
+        result.broadcast.forEach((broadcast: any) => {
+          server.clients.forEach(function each(client) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(broadcast));
+            }
+          });
+        });
       }
     } catch (e) {
       console.error('Message error: ', e);
