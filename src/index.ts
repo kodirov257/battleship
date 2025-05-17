@@ -1,18 +1,31 @@
+import process from 'node:process';
 import dotenv from 'dotenv';
-import http from 'http';
-import * as process from "node:process";
+import WebSocket from 'ws';
 
 dotenv.config();
 
 const hostname = '127.0.0.1';
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
-const server = http.createServer((req, res) => {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('Hello, World!');
+const server = new WebSocket.Server({
+  host: hostname,
+  port: port,
+  autoPong: true,
 });
 
-server.listen(port, hostname, () => {
-    console.log(`Server running at http://${hostname}:${port}/`);
+server.on('listening', (ws: WebSocket) => {
+  console.log(`WebSocket server listening on ws://${hostname}:${port}/`);
+});
+
+server.on('connection', (ws: WebSocket) => {
+  console.log('New WebSocket client connected');
+
+  ws.on('message', (message: string) => {
+    console.log('Received message from client: ', message);
+    ws.send('Server received: ' + message);
+  });
+
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+  });
 });
