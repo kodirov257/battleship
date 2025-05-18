@@ -5,6 +5,9 @@ import { AuthController } from '../controllers/auth-controller';
 import { ScoreRepository } from '../repositories/score-repository';
 import { ScoreService } from '../services/score-service';
 import { ScoreController } from '../controllers/score-controller';
+import { RoomRepository } from '../repositories/room-repository';
+import { RoomService } from '../services/room-service';
+import { RoomController } from '../controllers/room-controller';
 
 const container: Container = Container.getInstance();
 
@@ -43,6 +46,25 @@ container.register(ScoreController.name, {
   useClass: ScoreController,
   singleton: true,
   dependencies: [ScoreService.name, UserRepository.name],
+});
+///////////////////////////////////////////
+
+/////////////////////////////////////////// Room
+container.register(RoomRepository.name, {
+  useClass: RoomRepository,
+  singleton: true,
+});
+
+container.register(RoomService.name, {
+  useClass: RoomService,
+  singleton: true,
+  dependencies: [RoomRepository.name],
+});
+
+container.register(RoomController.name, {
+  useClass: RoomController,
+  singleton: true,
+  dependencies: [RoomService.name, UserRepository.name],
 });
 ///////////////////////////////////////////
 

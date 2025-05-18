@@ -1,5 +1,7 @@
 import { UserService } from '../services/user-service';
 import { validateRequest } from '../utils';
+import WebSocket from 'ws';
+import { connections } from '../config/users';
 
 export class AuthController {
   private service: UserService;
@@ -8,7 +10,7 @@ export class AuthController {
     this.service = service;
   }
 
-  public register = (request: string) => {
+  public register = (request: string, ws?: WebSocket) => {
     const result: {
       name: string;
       index: string;
@@ -33,6 +35,9 @@ export class AuthController {
       this.validateUsername(name);
 
       const user = this.service.register(name, password);
+      if (ws) {
+        connections.set(ws, user);
+      }
 
       result.name = user.name;
       result.index = user.id;

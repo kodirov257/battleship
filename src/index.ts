@@ -4,6 +4,7 @@ import WebSocket from 'ws';
 
 import './config/dependencies';
 import route from './route';
+import {AuthError} from "./exceptions/auth-error";
 
 dotenv.config();
 
@@ -20,15 +21,17 @@ server.on('listening', (ws: WebSocket) => {
   console.log(`WebSocket server listening on ws://${hostname}:${port}/`);
 });
 
-server.on('connection', (ws: WebSocket) => {
+server.on('connection', async (ws: WebSocket) => {
   console.log('New WebSocket client connected');
 
-  ws.on('message', (message: string) => {
+  ws.on('message', async (message: string) => {
     try {
       console.log(message.toString());
-      const result = route.wsHandler(message);
+      const result = await route.wsHandler(message, ws);
 
-      ws.send(JSON.stringify(result.result));
+      if (result.result) {
+        ws.send(JSON.stringify(result.result));
+      }
 
       if (result.broadcast.length > 0) {
         result.broadcast.forEach((broadcast: any) => {
@@ -40,8 +43,12 @@ server.on('connection', (ws: WebSocket) => {
         });
       }
     } catch (e) {
-      console.error('Message error: ', e);
-      ws.send('Server error: ' + e);
+      if (e instanceof AuthError) {
+        ws.send(e.message);
+      } else {
+        console.error('Message error: ', e);
+        ws.send('Server error: ' + e);
+      }
     }
   });
 
