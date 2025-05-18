@@ -1,8 +1,12 @@
+import { Game } from './game';
+
 export class Room {
   private readonly id: string;
   private readonly created_by: string;
   private readonly users: string[];
   private available: boolean;
+
+  private game: Game | undefined;
 
   constructor(id: string, created_by: string, users: string[] = []) {
     this.id = id;
@@ -33,5 +37,13 @@ export class Room {
 
   public isAvailable(): boolean {
     return this.available;
+  }
+
+  public setGame(game: Game) {
+    this.game = game;
+  }
+
+  public getGame(): Game | undefined {
+    return this.game;
   }
 }

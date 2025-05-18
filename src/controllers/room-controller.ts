@@ -1,14 +1,21 @@
 import { UserRepository } from '../repositories/user-repository';
 import { RoomService } from '../services/room-service';
 import { Room } from '../models/room';
+import { GameService } from 'services/game-service';
 
 export class RoomController {
   private service: RoomService;
+  private gameService: GameService;
   private userRepository: UserRepository;
 
-  constructor(service: RoomService, userRepository: UserRepository) {
+  constructor(
+    service: RoomService,
+    gameService: GameService,
+    userRepository: UserRepository,
+  ) {
     this.service = service;
     this.userRepository = userRepository;
+    this.gameService = gameService;
   }
 
   public create(req: any): Room {
@@ -48,7 +55,16 @@ export class RoomController {
 
   public addUserToRoom(req: any, roomId: string) {
     try {
-      return this.service.addUser(roomId, req.user.id);
+      const room = this.service.addUser(roomId, req.user.id);
+      if (!room.isAvailable() && room.getUsers().length >= 2) {
+        const game = this.gameService.create(
+          room.getId(),
+          room.getUsers()[0]!,
+          room.getUsers()[1]!,
+        );
+        room.setGame(game);
+      }
+      return room;
     } catch (e) {
       throw e;
     }

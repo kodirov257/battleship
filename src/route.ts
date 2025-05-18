@@ -6,6 +6,9 @@ import { parseRequest } from './utils';
 import { ScoreController } from './controllers/score-controller';
 import { setAllMiddlewares } from './config/middlewares';
 import { RoomController } from './controllers/room-controller';
+import { User } from './models/user';
+import { connections } from './config/users';
+import { Room } from './models/room';
 
 const wsRoutes: { [key: string]: { middlewares: string[] } } = {
   reg: { middlewares: [] },
@@ -27,8 +30,9 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
   if (!route) {
     throw new Error('Invalid request type');
   }
+
   const middleware = setAllMiddlewares(route.middlewares);
-  const req = {};
+  const req: { user?: User } = {};
   await middleware.handle({ req: req, socket: ws });
 
   const scoreController = Container.getInstance().get<ScoreController>(
@@ -38,17 +42,21 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
     RoomController.name,
   );
 
-  let result = {};
+  let result: {
+    result?: { type: string; data: any; id: number };
+    broadcast?: { type: string; data: any; id: number }[];
+    multicast?: { clients: string[]; result: any }[];
+  } = {};
   let authController = null;
-  const broadcast = [];
-  let rooms, winners;
+  const broadcast = []; /*, multicast = []*/
+  let rooms, winners, room: Room;
   try {
     switch (data.type) {
       case 'reg':
         authController = Container.getInstance().get<AuthController>(
           AuthController.name,
         );
-        result = authController.register(data.data, ws);
+        const authResult = authController.register(data.data, ws);
 
         winners = scoreController.getWinners();
         broadcast.push({
@@ -67,7 +75,7 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
         result = {
           result: {
             type: data.type,
-            data: JSON.stringify(result),
+            data: JSON.stringify(authResult),
             id: data.id,
           },
           broadcast,
@@ -90,7 +98,7 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
         break;
 
       case 'add_user_to_room':
-        roomController.addUserToRoom(req, data.data.indexRoom);
+        room = roomController.addUserToRoom(req, data.data.indexRoom);
 
         rooms = roomController.getAvailableRooms();
         broadcast.push({
@@ -99,6 +107,40 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
           id: data.id,
         });
 
+        if (!room.isAvailable()) {
+          // const clients: WebSocket[] = [];
+          room.getUsers().forEach((userId: string) => {
+            connections.forEach((user: User, ws) => {
+              if (user.id === userId) {
+                ws.send(
+                  JSON.stringify({
+                    type: 'create_game',
+                    data: JSON.stringify({
+                      idGame: room.getId(),
+                      idPlayer: user.id,
+                    }),
+                    id: data.id,
+                  }),
+                );
+
+                // clients.push(ws);
+              }
+            });
+          });
+
+          // multicast.push({
+          //   clients: clients,
+          //   result: {
+          //     type: 'create_game',
+          //     data: JSON.stringify({
+          //       idGame: room.getId(),
+          //       idPlayer: req.user!.id,
+          //     }),
+          //     id: data.id,
+          //   },
+          // });
+        }
+
         result = {
           result: {
             type: data.type,
@@ -106,6 +148,7 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
             id: data.id,
           },
           broadcast,
+          /*multicast,*/
         };
         break;
     }

@@ -4,7 +4,7 @@ import WebSocket from 'ws';
 
 import './config/dependencies';
 import route from './route';
-import {AuthError} from "./exceptions/auth-error";
+import { AuthError } from './exceptions/auth-error';
 
 dotenv.config();
 
