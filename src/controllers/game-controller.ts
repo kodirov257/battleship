@@ -141,7 +141,7 @@ export class GameController {
         if (this.service.isShipDestroyed(game, data.indexPlayer, shipId!)) {
           attackStatus = 'killed';
 
-          this.service.destroyAround(game, data.indexPlayer, shipId!);
+          // this.service.destroyAround(game, data.indexPlayer, shipId!);
         }
 
         if (this.service.ifPlayerWinner(game, data.indexPlayer)) {
@@ -183,7 +183,7 @@ export class GameController {
         if (this.service.isShipDestroyed(game, data.indexPlayer, shipId!)) {
           attackStatus = 'killed';
 
-          this.service.destroyAround(game, data.indexPlayer, shipId!);
+          // this.service.destroyAround(game, data.indexPlayer, shipId!);
         }
 
         if (this.service.ifPlayerWinner(game, data.indexPlayer)) {
