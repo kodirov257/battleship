@@ -243,7 +243,6 @@ export class GameService {
 
     const ship = game.getShip(opponentId, shipId);
     if (!ship) {
-      console.log('isShipDestroyed, shipId: ', shipId);
       throw new Error('Ship not found');
     }
 
@@ -274,9 +273,6 @@ export class GameService {
 
       const row = board[horizontal];
       if (!row || !row[vertical]) {
-        console.log('isShipDestroyed, horizontal: ', horizontal);
-        console.log('isShipDestroyed, vertical: ', vertical);
-        console.log('isShipDestroyed, row: ', row);
         throw new Error('Board is not filled');
       }
 
