@@ -11,6 +11,7 @@ import { RoomController } from '../controllers/room-controller';
 import { GameRepository } from '../repositories/game-repository';
 import { GameService } from '../services/game-service';
 import { GameController } from '../controllers/game-controller';
+import { ShipRepository } from '../repositories/ship-repository';
 
 const container: Container = Container.getInstance();
 
@@ -80,13 +81,20 @@ container.register(GameRepository.name, {
 container.register(GameService.name, {
   useClass: GameService,
   singleton: true,
-  dependencies: [GameRepository.name],
+  dependencies: [GameRepository.name, ShipRepository.name],
 });
 
 container.register(GameController.name, {
   useClass: GameController,
   singleton: true,
   dependencies: [GameService.name],
+});
+///////////////////////////////////////////
+
+/////////////////////////////////////////// Ship
+container.register(ShipRepository.name, {
+  useClass: ShipRepository,
+  singleton: true,
 });
 ///////////////////////////////////////////
 

@@ -9,11 +9,14 @@ import { RoomController } from './controllers/room-controller';
 import { User } from './models/user';
 import { connections } from './config/users';
 import { Room } from './models/room';
+import { GameController } from './controllers/game-controller';
+import {Game} from "./models/game";
 
 const wsRoutes: { [key: string]: { middlewares: string[] } } = {
   reg: { middlewares: [] },
   create_room: { middlewares: ['auth'] },
   add_user_to_room: { middlewares: ['auth'] },
+  add_ships: { middlewares: ['auth'] },
 };
 
 const UPDATE_ROOM = 'update_room';
@@ -32,8 +35,9 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
   }
 
   const middleware = setAllMiddlewares(route.middlewares);
-  const req: { user?: User } = {};
+  const req: { user?: User; body?: any } = {};
   await middleware.handle({ req: req, socket: ws });
+  console.log(req);
 
   const scoreController = Container.getInstance().get<ScoreController>(
     ScoreController.name,
@@ -42,14 +46,20 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
     RoomController.name,
   );
 
-  let result: {
+  type Multicast = {
+    client: WebSocket;
+    result: { type: string; data: any; id: number };
+  }[];
+
+  const result: {
     result?: { type: string; data: any; id: number };
     broadcast?: { type: string; data: any; id: number }[];
-    multicast?: { clients: string[]; result: any }[];
+    multicast?: Multicast;
   } = {};
   let authController = null;
-  const broadcast = []; /*, multicast = []*/
-  let rooms, winners, room: Room;
+  const broadcast = [],
+    multicast: Multicast = [];
+  let rooms, winners, room: Room, game: Game;
   try {
     switch (data.type) {
       case 'reg':
@@ -72,13 +82,10 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
           id: data.id,
         });
 
-        result = {
-          result: {
-            type: data.type,
-            data: JSON.stringify(authResult),
-            id: data.id,
-          },
-          broadcast,
+        result.result = {
+          type: data.type,
+          data: JSON.stringify(authResult),
+          id: data.id,
         };
         break;
 
@@ -91,10 +98,6 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
           data: JSON.stringify(rooms),
           id: data.id,
         });
-
-        result = {
-          broadcast,
-        };
         break;
 
       case 'add_user_to_room':
@@ -108,50 +111,77 @@ const wsHandler = async (request: string, ws: WebSocket): Promise<any> => {
         });
 
         if (!room.isAvailable()) {
-          // const clients: WebSocket[] = [];
+          game = room.getGame()!;
           room.getUsers().forEach((userId: string) => {
             connections.forEach((user: User, ws) => {
               if (user.id === userId) {
-                ws.send(
-                  JSON.stringify({
+                multicast.push({
+                  client: ws,
+                  result: {
                     type: 'create_game',
                     data: JSON.stringify({
-                      idGame: room.getId(),
-                      idPlayer: user.id,
+                      idGame: game.getId(),
+                      idPlayer: userId,
                     }),
                     id: data.id,
-                  }),
-                );
+                  },
+                });
+              }
+            });
+          });
+        }
 
-                // clients.push(ws);
+        result.result = {
+          type: data.type,
+          data: '',
+          id: data.id,
+        };
+        break;
+
+      case 'add_ships':
+        req.body = data.data;
+
+        const gameController = Container.getInstance().get<GameController>(
+          GameController.name,
+        );
+        game = gameController.addShips(req);
+
+        if (game.isReady()) {
+          const readyGame = gameController.startGame(req, game.getId());
+          game.getPlayers().forEach((userId: string) => {
+            connections.forEach((user: User, ws) => {
+              if (user.id === userId) {
+                multicast.push({
+                  client: ws,
+                  result: {
+                    type: 'start_game',
+                    data: JSON.stringify(readyGame),
+                    id: data.id,
+                  },
+                });
+
+                multicast.push({
+                  client: ws,
+                  result: {
+                    type: 'turn',
+                    data: JSON.stringify({
+                      currentPlayer: readyGame.currentPlayerIndex,
+                    }),
+                    id: data.id,
+                  },
+                });
               }
             });
           });
 
-          // multicast.push({
-          //   clients: clients,
-          //   result: {
-          //     type: 'create_game',
-          //     data: JSON.stringify({
-          //       idGame: room.getId(),
-          //       idPlayer: req.user!.id,
-          //     }),
-          //     id: data.id,
-          //   },
-          // });
+
         }
 
-        result = {
-          result: {
-            type: data.type,
-            data: '',
-            id: data.id,
-          },
-          broadcast,
-          /*multicast,*/
-        };
         break;
     }
+
+    result.broadcast = broadcast;
+    result.multicast = multicast;
 
     return result;
   } catch (e) {

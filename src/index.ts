@@ -42,6 +42,15 @@ server.on('connection', async (ws: WebSocket) => {
           });
         });
       }
+
+      if (result.multicast.length > 0) {
+        result.multicast.forEach((multicast: any) => {
+          const client: WebSocket = multicast.client;
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(multicast.result));
+          }
+        });
+      }
     } catch (e) {
       if (e instanceof AuthError) {
         ws.send(e.message);
