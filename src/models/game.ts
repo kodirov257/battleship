@@ -2,6 +2,7 @@ import { Ship } from './ship';
 
 export type CellType = number | string;
 export type Board = CellType[][];
+export type AttackStatus = 'miss' | 'killed' | 'shot';
 
 export class Game {
   public static readonly BOARD_SIZE: number = 10;
@@ -13,6 +14,7 @@ export class Game {
   private winner?: string;
   private readonly boards: Record<string, Board>;
   private readonly ships: Record<string, Record<string, Ship>>;
+  private turn: string;
 
   constructor(
     id: string,
@@ -25,6 +27,7 @@ export class Game {
     this.first_player_id = player1_id;
     this.second_player_id = player2_id;
     this.winner = undefined;
+    this.turn = this.first_player_id;
 
     this.boards = {
       [this.first_player_id]: Array.from({ length: Game.BOARD_SIZE }, () =>
@@ -59,6 +62,13 @@ export class Game {
 
   public getPlayers(): string[] {
     return [this.first_player_id, this.second_player_id];
+  }
+
+  public getOpponentId(playerId: string): string {
+    if (playerId === this.first_player_id) {
+      return this.second_player_id;
+    }
+    return this.first_player_id;
   }
 
   public setWinner(winner: string) {
@@ -98,5 +108,13 @@ export class Game {
       Object.keys(this.ships[this.first_player_id]!).length > 0 &&
       Object.keys(this.ships[this.second_player_id]!).length > 0
     );
+  }
+
+  public setTurn(turn: string) {
+    this.turn = turn;
+  }
+
+  public getTurn(): string {
+    return this.turn;
   }
 }

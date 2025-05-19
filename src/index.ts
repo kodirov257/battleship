@@ -33,23 +33,35 @@ server.on('connection', async (ws: WebSocket) => {
         ws.send(JSON.stringify(result.result));
       }
 
-      if (result.broadcast.length > 0) {
-        result.broadcast.forEach((broadcast: any) => {
-          server.clients.forEach(function each(client) {
+      const sendBroadcast = (result: any) => {
+        if (result.broadcast.length > 0) {
+          result.broadcast.forEach((broadcast: any) => {
+            server.clients.forEach(function each(client) {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(broadcast));
+              }
+            });
+          });
+        }
+      };
+
+      const sendMulticast = (result: any) => {
+        if (result.multicast.length > 0) {
+          result.multicast.forEach((multicast: any) => {
+            const client: WebSocket = multicast.client;
             if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify(broadcast));
+              client.send(JSON.stringify(multicast.result));
             }
           });
-        });
-      }
+        }
+      };
 
-      if (result.multicast.length > 0) {
-        result.multicast.forEach((multicast: any) => {
-          const client: WebSocket = multicast.client;
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(multicast.result));
-          }
-        });
+      if (result.priority === 'multicast') {
+        sendMulticast(result);
+        sendBroadcast(result);
+      } else {
+        sendBroadcast(result);
+        sendMulticast(result);
       }
     } catch (e) {
       if (e instanceof AuthError) {

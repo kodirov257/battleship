@@ -1,6 +1,7 @@
 import { GameService } from '../services/game-service';
 import { Direction as ShipDirection, Type as ShipType } from '../models/ship';
-import { Game } from 'models/game';
+import {AttackStatus, Game} from 'models/game';
+import {ScoreService} from "../services/score-service";
 
 type ShipTypeDef = {
   position: { x: number; y: number };
@@ -11,9 +12,15 @@ type ShipTypeDef = {
 
 export class GameController {
   private service: GameService;
+  private scoreService: ScoreService;
 
-  constructor(service: GameService) {
+  constructor(service: GameService, scoreService: ScoreService) {
     this.service = service;
+    this.scoreService = scoreService;
+  }
+
+  public getGame(req: any) {
+    return this.service.getGame(req.body.gameId);
   }
 
   public create(
@@ -50,7 +57,6 @@ export class GameController {
       this.validateShips(data.ships);
 
       const playerId = data.indexPlayer ?? req.user.id;
-      console.log('Add ships, player_id: ', playerId);
       let game = this.service.getGame(data.gameId);
 
       for (let i = 0; i < data.ships.length; i++) {
@@ -65,6 +71,10 @@ export class GameController {
           tempShip!.type,
         );
         game = this.service.fillBoard(game, playerId, ship);
+      }
+
+      if (game.isReady()) {
+        game = this.service.setTurn(game, playerId);
       }
 
       return game;
@@ -84,7 +94,7 @@ export class GameController {
           x: ship.getX(),
           y: ship.getY(),
         },
-        direction: ship.getDirection(),
+        direction: ship.getDirection() === 'vertical',
         length: ship.getLength(),
         type: ship.getType(),
       });
@@ -93,6 +103,120 @@ export class GameController {
     return {
       ships: ships,
       currentPlayerIndex: playerId,
+    };
+  }
+
+  public addTurn(req: any) {
+    const game = this.service.getGame(req.body.gameId);
+    const playerId = game.getOpponentId(req.body.indexPlayer);
+
+    return {
+      currentPlayer: playerId,
+    };
+  }
+
+  public getTurn(req: any) {
+    const game = this.service.getGame(req.body.gameId);
+
+    return {
+      currentPlayer: game.getTurn(),
+    };
+  }
+
+  public attack(req: any) {
+    const data = req.body;
+
+    try {
+      const game = this.service.getGame(data.gameId);
+
+      if (game.getTurn() !== data.indexPlayer) {
+        throw new Error('Invalid turn');
+      }
+
+      let attackStatus: AttackStatus = 'miss';
+      const { hit, shipId } = this.service.attackByPosition(game, data.indexPlayer, data.x, data.y);
+      if (hit) {
+        attackStatus = 'shot';
+
+        if (this.service.isShipDestroyed(game, data.indexPlayer, shipId!)) {
+          attackStatus = 'killed';
+
+          this.service.destroyAround(game, data.indexPlayer, shipId!);
+        }
+
+        if (this.service.ifPlayerWinner(game, data.indexPlayer)) {
+          this.scoreService.addWinner(req.user.id);
+        }
+      } else {
+        this.service.setTurn(game, game.getOpponentId(data.indexPlayer));
+      }
+
+      return {
+        position: {
+          x: data.x,
+          y: data.y,
+        },
+        currentPlayer: data.indexPlayer,
+        status: attackStatus,
+      };
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  public attackRandomly(req: any) {
+    const data = req.body;
+
+    try {
+      const game = this.service.getGame(data.gameId);
+
+      if (game.getTurn() !== data.indexPlayer) {
+        throw new Error('Invalid turn');
+      }
+
+      let attackStatus: AttackStatus = 'miss';
+      const {x, y} = this.service.getRandomPosition(game, data.indexPlayer);
+      const { hit, shipId } = this.service.attackByPosition(game, data.indexPlayer, x, y);
+      if (hit) {
+        attackStatus = 'shot';
+
+        if (this.service.isShipDestroyed(game, data.indexPlayer, shipId!)) {
+          attackStatus = 'killed';
+
+          this.service.destroyAround(game, data.indexPlayer, shipId!);
+        }
+
+        if (this.service.ifPlayerWinner(game, data.indexPlayer)) {
+          this.scoreService.addWinner(req.user.id);
+        }
+      } else {
+        this.service.setTurn(game, game.getOpponentId(data.indexPlayer));
+      }
+
+      return {
+        position: {
+          x: x,
+          y: y,
+        },
+        currentPlayer: data.indexPlayer,
+        status: attackStatus,
+      };
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  public checkWinner(req: any) {
+    const game = this.service.getGame(req.body.gameId);
+
+    if (game.getWinner()) {
+      return {
+        winPlayer: game.getWinner(),
+      };
+    }
+
+    return {
+      winPlayer: false,
     };
   }
 

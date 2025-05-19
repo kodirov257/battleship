@@ -87,7 +87,7 @@ container.register(GameService.name, {
 container.register(GameController.name, {
   useClass: GameController,
   singleton: true,
-  dependencies: [GameService.name],
+  dependencies: [GameService.name, ScoreService.name],
 });
 ///////////////////////////////////////////
 

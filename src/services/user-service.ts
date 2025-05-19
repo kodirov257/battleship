@@ -15,4 +15,6 @@ export class UserService {
   public register = (name: string, password: string): User => {
     return this.repository.create(name, password);
   };
+
+
 }
