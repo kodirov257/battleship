@@ -15,15 +15,15 @@ export class ScoreService {
   }
 
   public addWinner(userId: string): Score {
-    const scodeObj = this.repository.find(userId);
+    let scoreObj = this.repository.find(userId);
 
-    if (!scodeObj) {
-      throw new Error('Player not found');
+    if (!scoreObj) {
+      return this.repository.create(userId);
     }
 
-    scodeObj.addScore(1);
-    this.repository.update(scodeObj);
+    scoreObj.addScore(1);
+    this.repository.update(scoreObj);
 
-    return scodeObj;
+    return scoreObj;
   }
 }
